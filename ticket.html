@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | Ticket</title>
+  <link rel="stylesheet" href="./css/index.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    .ticket-box {
+      border: 2px dashed var(--primary-color);
+      padding: 2rem;
+      border-radius: 12px;
+      background: white;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">🚆 Smart Rail</a>
+    <ul id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li id="auth-link"></li>
+    </ul>
+  </nav>
+
+  <main style="align-items: center; justify-content: center;">
+    <div class="glass-panel" style="max-width: 700px; width: 100%;">
+      
+      <div id="ticket-content" class="ticket-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 1rem; margin-bottom: 1rem;">
+          <h2>🚆 Digital Ticket</h2>
+          <h3 style="color: var(--primary-color);" id="t-pnr">PNR: -----</h3>
+        </div>
+        
+        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+          <div style="flex: 2; min-width: 300px;">
+            <p><strong>Train:</strong> <span id="t-train"></span> (<span id="t-num"></span>)</p>
+            <p><strong>Date:</strong> <span id="t-date"></span></p>
+            <p><strong>Route:</strong> <span id="t-src"></span> to <span id="t-dst"></span></p>
+            <p><strong>Status:</strong> <span id="t-status" style="font-weight: 600; color: #10B981;">Confirmed</span></p>
+            <p><strong>Total Amount:</strong> ₹<span id="t-amt"></span></p>
+
+            <h3 style="margin-top: 1.5rem;">Passengers</h3>
+            <ul id="t-passengers" style="list-style: none; padding: 0;">
+              <!-- Passengers appended here -->
+            </ul>
+          </div>
+          
+          <div style="flex: 1; min-width: 150px; text-align: center; border-left: 1px solid #eee; padding-left: 1rem;">
+            <p style="font-weight: 600; margin-bottom: 0.5rem;">Scan QR</p>
+            <img id="t-qr" src="" alt="QR Code" style="width: 100%; max-width: 150px; aspect-ratio: 1/1; object-fit: contain;">
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: center;">
+        <button class="btn" onclick="downloadPDF()" style="width: 200px;">Download PDF</button>
+        <button class="btn btn-outline" onclick="window.location.href='index.html'" style="width: 200px;">Go Home</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script>
+    if(window.checkAuth) window.checkAuth();
+    
+    const pnr = sessionStorage.getItem('lastPNR');
+    if (!pnr) {
+      window.location.href = 'index.html';
+    }
+
+    async function loadTicket() {
+      try {
+        const data = await window.api.bookings.getByPNR(pnr);
+        const { booking, qrCode } = data;
+
+        document.getElementById('t-pnr').innerText = `PNR: ${booking.pnr}`;
+        document.getElementById('t-train').innerText = booking.train.trainName;
+        document.getElementById('t-num').innerText = booking.train.trainNumber;
+        document.getElementById('t-date').innerText = booking.travelDate;
+        document.getElementById('t-src').innerText = booking.train.source;
+        document.getElementById('t-dst').innerText = booking.train.destination;
+        document.getElementById('t-amt').innerText = booking.totalAmount;
+        document.getElementById('t-qr').src = qrCode;
+
+        if (booking.status === 'Cancelled') {
+          document.getElementById('t-status').innerText = 'Cancelled';
+          document.getElementById('t-status').style.color = 'var(--accent-color)';
+        }
+
+        const passList = document.getElementById('t-passengers');
+        passList.innerHTML = ''; // clear first
+        booking.passengers.forEach(p => {
+          let seatInfo = '';
+          if (p.coach && p.seatNumber) {
+            seatInfo = `<span style="color: var(--primary-color); font-weight: bold; margin-left:10px;">[${p.coach} - Seat ${p.seatNumber}]</span>`;
+          }
+          passList.innerHTML += `<li style="margin-bottom: 5px;">- ${p.name} (${p.age}, ${p.gender}) [${p.classType}] ${seatInfo}</li>`;
+        });
+
+      } catch (err) {
+        window.showToast("Failed to fetch ticket info: " + err.message, true);
+      }
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById('ticket-content');
+      const opt = {
+        margin:       1,
+        filename:     `ticket-${pnr}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+
+    loadTicket();
+  </script>
+</body>
+</html>
