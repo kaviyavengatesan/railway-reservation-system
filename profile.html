@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | My Profile</title>
+  <link rel="stylesheet" href="./css/index.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo"><i class="fa-solid fa-train"></i> Smart Rail</a>
+    <ul id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li id="auth-link"></li>
+    </ul>
+  </nav>
+
+  <main style="align-items: center;">
+    <div class="glass-panel" style="max-width: 900px; width: 100%;">
+      <h2><i class="fa-solid fa-user-circle"></i> My Dashboard</h2>
+      <p style="color: #666; margin-bottom: 2rem;">View all your past and upcoming reservations here.</p>
+
+      <div id="loader" class="text-center" style="padding: 3rem;">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: var(--primary-color);"></i>
+      </div>
+
+      <div id="no-bookings" class="text-center" style="display: none; padding: 2rem;">
+        <h3>No bookings found!</h3>
+        <p>You haven't booked any tickets yet.</p>
+        <button class="btn mt-4" style="width: 200px;" onclick="window.location.href='index.html'">Book a Ticket</button>
+      </div>
+
+      <div id="bookings-list" style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Bookings injected natively via JS -->
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script>
+    if(window.checkAuth) window.checkAuth();
+    
+    if (!localStorage.getItem('token')) {
+      window.location.href = 'login.html';
+    }
+
+    async function loadBookings() {
+      const loader = document.getElementById('loader');
+      const container = document.getElementById('bookings-list');
+      const emptyState = document.getElementById('no-bookings');
+      
+      try {
+        const bookings = await window.api.bookings.getMyBookings();
+        loader.style.display = 'none';
+
+        if (bookings.length === 0) {
+          emptyState.style.display = 'block';
+          return;
+        }
+
+        bookings.forEach(b => {
+          const isCancelled = b.status === 'Cancelled';
+          const badgeColor = isCancelled ? 'var(--accent-color)' : '#10B981';
+          
+          let tName = "Unknown Train";
+          let tSrc = "Unknown";
+          let tDst = "Unknown";
+          let tNum = "----";
+          
+          if(b.train) {
+              tName = b.train.trainName;
+              tNum = b.train.trainNumber;
+              tSrc = b.train.source;
+              tDst = b.train.destination;
+          }
+
+          const bCard = document.createElement('div');
+          bCard.style = `border: 1px solid #eee; border-radius: 8px; padding: 1.5rem; background: white; border-left: 5px solid ${badgeColor}; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;`;
+          
+          bCard.innerHTML = `
+            <div>
+              <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-ticket"></i> PNR: ${b.pnr}</h3>
+              <p><strong>Train:</strong> ${tName} (${tNum})</p>
+              <p><strong>Route:</strong> ${tSrc} <i class="fa-solid fa-arrow-right"></i> ${tDst}</p>
+              <p><strong>Travel Date:</strong> ${b.travelDate}</p>
+              <p><strong>Passengers:</strong> ${b.passengers.length} Person(s)</p>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <span style="background: ${badgeColor}20; color: ${badgeColor}; padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">${b.status}</span>
+                <h3 style="margin-top: 1rem;">₹${b.totalAmount}</h3>
+              </div>
+              <div>
+                <button class="btn btn-outline" style="padding: 0.4rem 1rem; width: 100%; margin-bottom: 0.5rem;" onclick="viewTicket('${b.pnr}')">View Ticket</button>
+                ${!isCancelled ? `<button class="btn btn-outline" style="padding: 0.4rem 1rem; width: 100%; border-color: var(--accent-color); color: var(--accent-color);" onclick="cancelTicketDash('${b.pnr}')">Cancel Ticket</button>` : ''}
+              </div>
+            </div>
+          `;
+          container.appendChild(bCard);
+        });
+      } catch (err) {
+        loader.style.display = 'none';
+        window.showToast("Failed to load bookings: " + err.message, true);
+      }
+    }
+
+    window.viewTicket = (pnr) => {
+      sessionStorage.setItem('lastPNR', pnr);
+      window.location.href = 'ticket.html';
+    };
+
+    window.cancelTicketDash = async (pnr) => {
+      if(confirm('Are you absolutely sure you want to cancel this booking? This cannot be undone.')) {
+        try {
+          await window.api.bookings.cancel(pnr);
+          window.showToast('Booking Cancelled Successfully!');
+          document.getElementById('bookings-list').innerHTML = '';
+          document.getElementById('loader').style.display = 'block';
+          loadBookings();
+        } catch(err) {
+          window.showToast(err.message, true);
+        }
+      }
+    };
+
+    loadBookings();
+  </script>
+</body>
+</html>
