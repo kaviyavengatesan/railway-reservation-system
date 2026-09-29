@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | Admin Dashboard</title>
+  <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">🚆 Smart Rail Admin</a>
+    <ul id="nav-links">
+      <li><a href="index.html">View Site</a></li>
+      <li id="auth-link"></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="glass-panel" style="width: 100%; max-width: 1000px; margin-bottom: 2rem;">
+      <h2>Add New Train</h2>
+      <form id="add-train-form" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label>Train Name</label>
+          <input type="text" id="tName" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 150px;">
+          <label>Train Number</label>
+          <input type="text" id="tNum" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 150px;">
+          <label>Source</label>
+          <input type="text" id="tSource" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 150px;">
+          <label>Destination</label>
+          <input type="text" id="tDest" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 150px;">
+          <label>Departure</label>
+          <input type="time" id="tDep" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 150px;">
+          <label>Arrival</label>
+          <input type="time" id="tArr" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 100px;">
+          <label>Capacity</label>
+          <input type="number" id="tCap" class="form-control" required>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 100px;">
+          <label>Price</label>
+          <input type="number" id="tPrice" class="form-control" required>
+        </div>
+        <div class="form-group" style="width: 100%; display: flex; justify-content: flex-end;">
+          <button type="submit" class="btn" style="width: 200px;">Add Train</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="table-container" style="max-width: 1000px;">
+      <h2>Manage Trains</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Name</th>
+            <th>Route</th>
+            <th>Timings</th>
+            <th>Seats (Avail/Total)</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="trains-tbody">
+          <!-- Populated via JS -->
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script>
+    if(window.checkAuth) window.checkAuth();
+    
+    // Check if admin
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'admin') {
+      window.location.href = 'index.html';
+    }
+
+    async function loadTrains() {
+      try {
+        const trains = await window.api.trains.getAll();
+        const tbody = document.getElementById('trains-tbody');
+        tbody.innerHTML = '';
+        trains.forEach(t => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${t.trainNumber}</td>
+              <td>${t.trainName}</td>
+              <td>${t.source} &rarr; ${t.destination}</td>
+              <td>${t.departureTime} - ${t.arrivalTime}</td>
+              <td>${t.availableSeats} / ${t.seatCapacity}</td>
+              <td>
+                <button onclick="deleteTrain('${t._id}')" class="btn-outline" style="padding: 0.3rem 0.6rem; border-color: var(--accent-color); color: var(--accent-color);">Delete</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        window.showToast("Failed to load trains", true);
+      }
+    }
+
+    document.getElementById('add-train-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await window.api.trains.create({
+          trainName: document.getElementById('tName').value,
+          trainNumber: document.getElementById('tNum').value,
+          source: document.getElementById('tSource').value,
+          destination: document.getElementById('tDest').value,
+          departureTime: document.getElementById('tDep').value,
+          arrivalTime: document.getElementById('tArr').value,
+          seatCapacity: parseInt(document.getElementById('tCap').value),
+          pricePerSeat: parseInt(document.getElementById('tPrice').value)
+        });
+        window.showToast('Train added successfully!');
+        document.getElementById('add-train-form').reset();
+        loadTrains();
+      } catch (err) {
+        window.showToast(err.message, true);
+      }
+    });
+
+    window.deleteTrain = async (id) => {
+      if(confirm('Are you sure you want to delete this train?')) {
+        try {
+          await window.api.trains.delete(id);
+          window.showToast('Train deleted!');
+          loadTrains();
+        } catch (err) {
+          window.showToast(err.message, true);
+        }
+      }
+    };
+
+    loadTrains();
+  </script>
+</body>
+</html>
