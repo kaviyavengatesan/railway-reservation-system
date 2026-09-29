@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | Home</title>
+  <link rel="stylesheet" href="./css/index.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">
+      🚆 Smart Rail
+    </a>
+    <ul id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="contact.html">Contact Support</a></li>
+      <li><a href="cancel.html">Cancel Ticket</a></li>
+      <li id="auth-link">
+        <a href="login.html" class="btn-nav" style="background:transparent; border: 1px solid var(--text-light); margin-right: 0.5rem;">Login</a>
+        <a href="login.html?action=register" class="btn-nav">Register</a>
+      </li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1 class="hero-title">Your Journey Begins Here</h1>
+    
+    <div class="glass-panel" style="width: 100%; max-width: 900px;">
+      <h2 class="text-center">Find Your Train</h2>
+      <form id="search-form" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="source">Source Station</label>
+          <input type="text" id="source" class="form-control" placeholder="e.g. New York">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="destination">Destination Station</label>
+          <input type="text" id="destination" class="form-control" placeholder="e.g. Boston">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label for="date">Travel Date</label>
+          <input type="date" id="date" class="form-control">
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end; gap: 1rem;">
+          <button type="submit" class="btn" style="width: auto; padding: 0.8rem 2rem;">Search Trains</button>
+          <button type="button" id="explore-btn" class="btn btn-outline" style="width: auto; padding: 0.8rem 2rem; background: white;">Explore All Trains</button>
+        </div>
+      </form>
+      
+      <!-- Popular Routes -->
+      <div style="margin-top: 1.5rem; text-align: center;">
+        <span style="font-size: 0.9rem; color: #555; margin-right: 0.5rem;"><i class="fa-solid fa-bolt" style="color: #F59E0B;"></i> Popular Routes:</span>
+        <button class="btn-outline" style="border-radius: 20px; padding: 0.3rem 0.8rem; font-size: 0.85rem; border-color: #ddd; color: #555; cursor: pointer; margin-right: 0.5rem;" onclick="quickSearch('Chennai', 'Coimbatore')">Chennai <i class="fa-solid fa-arrow-right-long" style="font-size:0.75rem;"></i> Coimbatore</button>
+        <button class="btn-outline" style="border-radius: 20px; padding: 0.3rem 0.8rem; font-size: 0.85rem; border-color: #ddd; color: #555; cursor: pointer; margin-right: 0.5rem;" onclick="quickSearch('Mumbai', 'Delhi')">Mumbai <i class="fa-solid fa-arrow-right-long" style="font-size:0.75rem;"></i> Delhi</button>
+        <button class="btn-outline" style="border-radius: 20px; padding: 0.3rem 0.8rem; font-size: 0.85rem; border-color: #ddd; color: #555; cursor: pointer;" onclick="quickSearch('Bangalore', 'Chennai')">Bangalore <i class="fa-solid fa-arrow-right-long" style="font-size:0.75rem;"></i> Chennai</button>
+      </div>
+    </div>
+
+    <!-- Live Status Tracker (RailOne Feature) -->
+    <div class="glass-panel" style="width: 100%; max-width: 900px; margin-top: 1.5rem; border-left: 4px solid var(--accent-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <span style="color: var(--accent-color);">🔴</span> Live Train Status
+          </h3>
+          <p style="font-size: 0.9rem; color: #555; margin-top: 0.2rem;">Track your train's current location and delay</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex: 1; max-width: 400px; min-width: 250px;">
+          <input type="text" id="live-train-number" class="form-control" placeholder="Train No (e.g. TN-1050)">
+          <button id="track-btn" class="btn btn-accent" style="width: auto;">Track</button>
+        </div>
+      </div>
+      <div id="live-status-result" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.03); border-radius: 8px;">
+        <!-- Status shown here via JS -->
+      </div>
+    </div>
+
+    <!-- Search Results -->
+    <div id="results-container" class="train-grid">
+      <!-- Cards dynamically inserted here -->
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Smart Rail. All rights reserved.</p>
+  </footer>
+
+  <!-- Train Structure Modal -->
+  <div class="modal-overlay" id="structure-modal" style="z-index: 1000;">
+    <div class="glass-panel" style="max-width: 800px; width: 95%; text-align: left; padding: 1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">🚂 Train Composition</h3>
+        <button class="btn-outline" style="padding: 0.2rem 0.5rem; border: none; font-size: 1.2rem; cursor: pointer;" onclick="document.getElementById('structure-modal').classList.remove('active')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="structure-content" style="display: flex; gap: 0.5rem; overflow-x: auto; padding: 1rem 0;">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Seat Layout Modal -->
+  <div class="modal-overlay" id="seat-modal" style="z-index: 1001;">
+    <div class="glass-panel" style="max-width: 500px; width: 95%; text-align: left; padding: 1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        <h3 style="margin: 0;" id="seat-modal-title">💺 Seat Layout</h3>
+        <button class="btn-outline" style="padding: 0.2rem 0.5rem; border: none; font-size: 1.2rem; cursor: pointer;" onclick="document.getElementById('seat-modal').classList.remove('active')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="seat-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 300px; overflow-y: auto; padding-right: 5px;">
+        <!-- Filled by JS -->
+      </div>
+      <div style="margin-top: 1rem; text-align: center; border-top: 1px solid #ddd; padding-top: 1rem;">
+        <p id="selected-seat-text" style="margin-bottom: 1rem; font-weight: bold; color: var(--primary-color);">No seat selected</p>
+        <button class="btn" id="book-selected-seat-btn" style="width: 100%; display: none;">Book Selected Seat</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/main.js"></script>
+</body>
+</html>
