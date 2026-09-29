@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | Book Ticket</title>
+  <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">🚆 Smart Rail</a>
+    <ul id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li id="auth-link"></li>
+    </ul>
+  </nav>
+
+  <main style="align-items: center; justify-content: center;">
+    <div class="glass-panel" style="max-width: 600px; width: 100%;" id="booking-container">
+      <h2 class="text-center">Passenger Details</h2>
+      
+      <div id="train-summary" style="background: rgba(47,128,237,0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center;">
+        <!-- Filled via JS -->
+      </div>
+      
+      <div id="preselected-seat-info" style="display:none; background: #e0f2fe; color: #0369a1; padding: 0.8rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; border: 1px solid #bae6fd; font-weight: bold;">
+        <!-- Filled via JS -->
+      </div>
+
+      <form id="passenger-form">
+        <label>Add Passengers</label>
+        <div id="passenger-list">
+          <div class="passenger-entry" style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <input type="text" class="form-control p-name" placeholder="Full Name" style="flex:2; min-width: 150px;" required>
+            <input type="number" class="form-control p-age" placeholder="Age" style="flex:1; min-width: 60px;" required>
+            <select class="form-control p-gender" style="flex:1; min-width: 90px;" required>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <select class="form-control p-class" style="flex:1; min-width: 90px;" required>
+              <option value="Sleeper">Sleeper</option>
+              <option value="3AC">3AC</option>
+              <option value="2AC">2AC</option>
+              <option value="1AC">1AC</option>
+            </select>
+          </div>
+        </div>
+        
+        <button type="button" class="btn-outline" style="width:100%; padding: 0.5rem; border-radius: 8px; margin-bottom: 1rem;" onclick="addPassenger()">+ Add Another Passenger</button>
+        
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 1.5rem 0;">
+        
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input type="text" id="contact" class="form-control" placeholder="10-digit mobile number" required pattern="[0-9]{10}">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <strong style="font-size: 1.2rem;">Estimated Total:</strong>
+          <strong style="font-size: 1.5rem; color: var(--primary-color);" id="live-total">₹0</strong>
+        </div>
+
+        <button type="submit" class="btn">Proceed to Payment</button>
+      </form>
+    </div>
+
+    <!-- Simulating Payment Gateway -->
+    <div class="glass-panel" style="max-width: 400px; width: 100%; display: none;" id="payment-container">
+      <h2 class="text-center">Secure Payment</h2>
+      <div class="text-center" style="margin-bottom: 1rem; font-size: 1.5rem; font-weight: bold; color: var(--primary-color);" id="pay-amount">
+        ₹0
+      </div>
+      
+      <div class="form-group">
+        <label>Payment Method</label>
+        <select class="form-control" id="pay-method" onchange="togglePaymentInputs()">
+          <option value="card">Credit/Debit Card</option>
+          <option value="upi">UPI</option>
+          <option value="net">Net Banking</option>
+        </select>
+      </div>
+
+      <!-- Detail Elements -->
+      <div id="card-details" style="display: block;">
+        <input type="text" class="form-control mb-2" placeholder="Card Number (xxxx xxxx xxxx xxxx)">
+        <div style="display:flex; gap: 10px;">
+          <input type="text" class="form-control" placeholder="MM/YY" style="flex:1">
+          <input type="password" class="form-control" placeholder="CVV" style="flex:1" maxlength="3">
+        </div>
+      </div>
+      
+      <div id="upi-details" style="display: none; flex-direction: column; gap: 0.5rem;">
+        <input type="text" class="form-control" placeholder="UPI ID (e.g. yourname@ybl)">
+        <input type="password" class="form-control" placeholder="Secure UPI PIN" maxlength="6">
+      </div>
+
+      <div id="net-details" style="display: none;">
+        <select class="form-control">
+          <option>State Bank of India</option>
+          <option>HDFC Bank</option>
+          <option>ICICI Bank</option>
+          <option>Axis Bank</option>
+        </select>
+      </div>
+
+      <button id="pay-btn" class="btn btn-accent mt-4">Pay Now</button>
+      
+      <!-- Multi-step Tracking Loader -->
+      <div id="pay-loader" style="display:none; margin-top: 2rem;">
+        <div style="width: 100%; background: #e5e7eb; border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 1rem;">
+          <div id="progress-bar" style="height: 100%; background: var(--primary-color); width: 0%; transition: width 0.5s ease;"></div>
+        </div>
+        <div id="pay-status-text" class="text-center" style="color:var(--text-dark); font-weight:600;">Initiating Gateway...</div>
+      </div>
+    </div>
+    
+    <!-- OTP Modal -->
+    <div class="modal-overlay" id="otp-modal">
+      <div class="glass-panel" style="max-width: 350px; text-align: center;">
+        <h3>Authentication Required</h3>
+        <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">Enter the 6-digit OTP sent to your registered mobile number.</p>
+        <input type="text" id="otp-input" class="form-control text-center" placeholder="• • • • • •" maxlength="6" style="font-size: 1.5rem; letter-spacing: 5px;">
+        <button class="btn mt-4" id="verify-otp-btn">Verify & Pay</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script>
+    if(window.checkAuth) window.checkAuth();
+    
+    // Check auth
+    if (!localStorage.getItem('token')) {
+      window.location.href = 'login.html';
+    }
+
+    const trainId = sessionStorage.getItem('selectedTrain');
+    const travelDate = sessionStorage.getItem('travelDate');
+    
+    if (!trainId || !travelDate) {
+      window.location.href = 'index.html';
+    }
+
+    document.getElementById('train-summary').innerHTML = `<strong>Travel Date:</strong> ${travelDate}`;
+
+    function togglePaymentInputs() {
+      const method = document.getElementById('pay-method').value;
+      const card = document.getElementById('card-details');
+      const upi = document.getElementById('upi-details');
+      const net = document.getElementById('net-details');
+
+      card.style.display = 'none';
+      upi.style.display = 'none';
+      net.style.display = 'none';
+
+      if (method === 'card') card.style.display = 'block';
+      if (method === 'upi') upi.style.display = 'flex';
+      if (method === 'net') net.style.display = 'block';
+    }
+
+    function addPassenger() {
+      const div = document.createElement('div');
+      div.className = 'passenger-entry';
+      div.style = 'display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;';
+      div.innerHTML = `
+        <input type="text" class="form-control p-name" placeholder="Full Name" style="flex:2; min-width: 150px;" required>
+        <input type="number" class="form-control p-age" placeholder="Age" style="flex:1; min-width: 60px;" required>
+        <select class="form-control p-gender" style="flex:1; min-width: 90px;" required>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+        <select class="form-control p-class" style="flex:1; min-width: 90px;" required onchange="updateLiveAmount()">
+          <option value="Sleeper">Sleeper</option>
+          <option value="3AC">3AC</option>
+          <option value="2AC">2AC</option>
+          <option value="1AC">1AC</option>
+        </select>
+      `;
+      document.getElementById('passenger-list').appendChild(div);
+      updateLiveAmount();
+    }
+
+    function updateLiveAmount() {
+      const trainPrice = parseInt(sessionStorage.getItem('trainPrice')) || 500;
+      let totalAmount = 0;
+      document.querySelectorAll('.passenger-entry').forEach(entry => {
+        const classType = entry.querySelector('.p-class').value;
+        const multiplier = classType === '1AC' ? 4 : classType === '2AC' ? 3 : classType === '3AC' ? 2 : 1;
+        totalAmount += (trainPrice * multiplier);
+      });
+      document.getElementById('live-total').innerText = '₹' + totalAmount;
+    }
+
+    // Attach listener to initial passenger entry
+    document.querySelector('.p-class').addEventListener('change', updateLiveAmount);
+    
+    // Initial call
+    updateLiveAmount();
+
+    // Check for pre-selected seats
+    const preCoach = sessionStorage.getItem('selectedCoach');
+    const preSeatsStr = sessionStorage.getItem('selectedSeats');
+    const preClass = sessionStorage.getItem('selectedClass');
+
+    let preSeats = [];
+    if (preSeatsStr) {
+      preSeats = JSON.parse(preSeatsStr);
+    }
+
+    if (preCoach && preSeats.length > 0 && preClass) {
+      document.getElementById('preselected-seat-info').style.display = 'block';
+      document.getElementById('preselected-seat-info').innerText = `✓ Direct Booking: Coach ${preCoach}, Seat(s) ${preSeats.join(', ')} reserved. Please fill passenger details for each seat.`;
+      
+      for (let i = 1; i < preSeats.length; i++) {
+        addPassenger();
+      }
+
+      const classSelects = document.querySelectorAll('.p-class');
+      classSelects.forEach((select, idx) => {
+        if (idx < preSeats.length) {
+          select.value = preClass;
+          select.style.pointerEvents = 'none';
+          select.style.background = '#e9ecef';
+        }
+      });
+      updateLiveAmount();
+    }
+
+    let bookingPayload = null;
+
+    document.getElementById('passenger-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const trainPrice = parseInt(sessionStorage.getItem('trainPrice')) || 500;
+      const passengers = [];
+      const entries = document.querySelectorAll('.passenger-entry');
+      let totalAmount = 0;
+
+      entries.forEach((entry, index) => {
+        const classType = entry.querySelector('.p-class').value;
+        const multiplier = classType === '1AC' ? 4 : classType === '2AC' ? 3 : classType === '3AC' ? 2 : 1;
+        totalAmount += (trainPrice * multiplier);
+
+        const passObj = {
+          name: entry.querySelector('.p-name').value,
+          age: parseInt(entry.querySelector('.p-age').value),
+          gender: entry.querySelector('.p-gender').value,
+          classType: classType
+        };
+
+        // Attach pre-selected seat to each passenger mapped
+        if (index < preSeats.length && preCoach) {
+          passObj.coach = preCoach;
+          passObj.seatNumber = parseInt(preSeats[index]);
+        }
+
+        passengers.push(passObj);
+      });
+
+      const contactNumber = document.getElementById('contact').value;
+
+      bookingPayload = {
+        trainId,
+        travelDate,
+        passengers,
+        contactNumber,
+        totalAmount
+      };
+
+      // Switch to payment view
+      document.getElementById('booking-container').style.display = 'none';
+      document.getElementById('payment-container').style.display = 'block';
+      document.getElementById('pay-amount').innerText = '₹' + totalAmount;
+    });
+
+    // Proceed to OTP Prompt
+    document.getElementById('pay-btn').addEventListener('click', () => {
+      document.getElementById('otp-modal').classList.add('active');
+    });
+
+    // Simulate Multi-step gateway processing
+    document.getElementById('verify-otp-btn').addEventListener('click', async () => {
+      const otp = document.getElementById('otp-input').value;
+      if (otp.length < 4) {
+        return window.showToast('Please enter a valid OTP', true);
+      }
+
+      document.getElementById('otp-modal').classList.remove('active');
+      const btn = document.getElementById('pay-btn');
+      const loader = document.getElementById('pay-loader');
+      const pBar = document.getElementById('progress-bar');
+      const pText = document.getElementById('pay-status-text');
+      
+      btn.style.display = 'none';
+      loader.style.display = 'block';
+
+      // Simulating Payment Steps
+      pBar.style.width = '20%';
+      pText.innerText = 'Contacting Bank Server...';
+      
+      setTimeout(() => {
+        pBar.style.width = '60%';
+        pText.innerText = 'Verifying Security Tokens...';
+      }, 1000);
+
+      setTimeout(() => {
+        pBar.style.width = '85%';
+        pText.innerText = 'Processing Transaction...';
+      }, 2500);
+
+      setTimeout(async () => {
+        try {
+          const res = await window.api.bookings.create(bookingPayload);
+          pBar.style.width = '100%';
+          pBar.style.background = '#10B981'; // Green
+          pText.style.color = '#10B981';
+          pText.innerText = 'Payment Successful! Redirecting...';
+
+          sessionStorage.setItem('lastPNR', res.booking.pnr);
+          sessionStorage.removeItem('selectedCoach');
+          sessionStorage.removeItem('selectedSeats');
+          sessionStorage.removeItem('selectedClass');
+          
+          setTimeout(() => {
+            window.location.href = 'ticket.html';
+          }, 1000);
+
+        } catch (err) {
+          window.showToast(err.message, true);
+          btn.style.display = 'block';
+          loader.style.display = 'none';
+          pBar.style.width = '0%';
+        }
+      }, 4000);
+    });
+  </script>
+</body>
+</html>
