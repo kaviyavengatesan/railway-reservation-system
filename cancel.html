@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rail | Cancel Ticket</title>
+  <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="logo">🚆 Smart Rail</a>
+    <ul id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li id="auth-link"></li>
+    </ul>
+  </nav>
+
+  <main style="align-items: center; justify-content: center;">
+    <div class="glass-panel" style="max-width: 500px; width: 100%;">
+      <h2 class="text-center" style="color: var(--accent-color);">Cancel Ticket</h2>
+      <p class="text-center mb-4 text-dark">Enter your PNR details to cancel</p>
+
+      <div class="form-group">
+        <label>PNR Number</label>
+        <input type="text" id="cancel-pnr" class="form-control" placeholder="e.g. PNR12345678" required>
+      </div>
+
+      <button class="btn btn-accent" id="search-cancel-btn">Find Booking</button>
+
+      <div id="cancel-details" style="display: none; margin-top: 2rem; border-top: 1px solid #ccc; padding-top: 1rem;">
+        <h3>Booking Summary</h3>
+        <p><strong>Train:</strong> <span id="c-train"></span> (<span id="c-status"></span>)</p>
+        <p><strong>Date:</strong> <span id="c-date"></span></p>
+        <p><strong>Original Amount:</strong> ₹<span id="c-amt"></span></p>
+
+        <div id="passenger-list" style="margin-top: 1.5rem;">
+          <h4 style="margin-bottom: 0.5rem; color: var(--primary-color);">Select Passengers to Cancel</h4>
+          <div id="passengers-container"></div>
+        </div>
+
+        <button class="btn btn-outline mt-4" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="confirmCancellation()">Confirm Cancellation</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./js/api.js"></script>
+  <script>
+    if(window.checkAuth) window.checkAuth();
+    
+    if (!localStorage.getItem('token')) {
+      window.location.href = 'login.html';
+    }
+
+    let fetchedPNR = null;
+
+    document.getElementById('search-cancel-btn').addEventListener('click', async () => {
+      const pnr = document.getElementById('cancel-pnr').value;
+      if(!pnr) return window.showToast('Enter PNR first', true);
+
+      try {
+        const { booking } = await window.api.bookings.getByPNR(pnr);
+        
+        document.getElementById('cancel-details').style.display = 'block';
+        document.getElementById('c-train').innerText = booking.train.trainName;
+        document.getElementById('c-date').innerText = booking.travelDate;
+        document.getElementById('c-amt').innerText = booking.totalAmount;
+        document.getElementById('c-status').innerText = booking.status;
+        
+        const container = document.getElementById('passengers-container');
+        container.innerHTML = '';
+        
+        booking.passengers.forEach(p => {
+          const div = document.createElement('div');
+          div.style.borderBottom = '1px solid #eee';
+          
+          const isCancelled = p.status === 'Cancelled';
+          
+          div.innerHTML = `
+            <label style="display: flex; align-items: center; padding: 0.8rem; cursor: ${isCancelled ? 'default' : 'pointer'}; width: 100%;">
+              <input type="checkbox" value="${p._id}" class="pass-check" ${isCancelled ? 'disabled' : ''} style="margin-right: 1.2rem; width: 22px; height: 22px; cursor: ${isCancelled ? 'default' : 'pointer'};">
+              <div style="flex-grow: 1;">
+                <div style="font-weight: 600; color: var(--text-dark); font-size: 1.05rem;">${p.name}</div>
+                <div style="font-size: 0.9rem; color: #666;">${p.age} yrs | ${p.gender} | Seat: ${p.coach}-${p.seatNumber}</div>
+                <div style="font-size: 0.85rem; margin-top: 0.2rem;">
+                  Status: <span style="color: ${isCancelled ? 'var(--accent-color)' : '#10B981'}; font-weight: 700;">${p.status}</span>
+                </div>
+              </div>
+            </label>
+          `;
+          container.appendChild(div);
+        });
+
+        if (booking.status === 'Cancelled') {
+          document.getElementById('c-status').style.color = 'var(--accent-color)';
+          window.showToast('This booking is fully cancelled', true);
+          document.querySelector('#cancel-details button').style.display = 'none';
+        } else {
+          document.querySelector('#cancel-details button').style.display = 'block';
+        }
+
+        fetchedPNR = pnr;
+      } catch(err) {
+        window.showToast(err.message, true);
+      }
+    });
+
+    window.confirmCancellation = async () => {
+      if(!fetchedPNR) return;
+      
+      const selectedPassIds = Array.from(document.querySelectorAll('.pass-check:checked')).map(cb => cb.value);
+      
+      if (selectedPassIds.length === 0) {
+        return window.showToast('Please select at least one passenger to cancel', true);
+      }
+
+      if(confirm(`Are you sure you want to cancel ${selectedPassIds.length} passenger(s)? This cannot be undone.`)) {
+        try {
+          await window.api.bookings.cancel(fetchedPNR, selectedPassIds);
+          window.showToast('Selected tickets cancelled successfully.');
+          // Refresh the view
+          document.getElementById('search-cancel-btn').click();
+        } catch(err) {
+          window.showToast(err.message, true);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
